@@ -22,6 +22,9 @@ library(fredr)
 proc<-as.data.table(read_excel("data/OECD_cpi.xlsx", sheet = "data_cpi"))
 long_cpi <- melt(proc, id.vars = "country", value.name = "cpi", variable.name = "year")
 
+unique_countries <- unique(long_cpi$country)
+print(unique_countries)
+
 proc<-as.data.table(read_excel("data/OECD_cpicore.xlsx", sheet="data_cpicore"))
 long_cpicore <- melt(proc, id.vars = "country",value.name ="cpicore", variable.name = "year")
 
@@ -222,6 +225,32 @@ map(countries, function(country_name) {
 graphs <- map(countries, generate_graph)
 composite_graph <- wrap_plots(graphs, ncol = 4)
 ggsave(filename = "graph/All_graphs.jpeg", plot = composite_graph, width = 12, height = 10, dpi = 300)
+
+
+# Graph of voveru and wage inflation for each countries: generate and export
+countries <- c("Austria", "Czechia", "Finland", "France", "Germany", "Hungary", "Luxembourg", "Norway",
+               "Poland", "Portugal", "Sweden", "Switzerland", "Türkiye", "United States")
+
+generate_graph <- function(country_name) {
+  master_country <- master %>%
+    filter(country == country_name)
+  
+  ggplot(data = master_country, aes(x = voveru, y = wagegrowth, label = year)) +
+    geom_point() +  
+    geom_smooth(method = "lm", se = FALSE, color = "#119311dd") +  
+    geom_text(size = 3, hjust = -0.2, vjust = 0.5) +  # Add text labels for "year"
+    labs(x = "voveru", y = "wagegrowth", title = paste(country_name)) +  
+    theme_minimal()
+}
+
+map(countries, function(country_name) {
+  # Generate the graph
+  p <- generate_graph(country_name)
+  ggsave(filename = file.path("graph", paste(country_name, "_wage.jpeg", sep = "")), plot = p, width = 8, height = 6, dpi = 300)
+})
+graphs <- map(countries, generate_graph)
+composite_graph <- wrap_plots(graphs, ncol = 4)
+ggsave(filename = "graph/All_graphs_wage.jpeg", plot = composite_graph, width = 12, height = 10, dpi = 300)
 
 
 ########################################################
