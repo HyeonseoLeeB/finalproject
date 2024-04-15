@@ -121,10 +121,10 @@ master$wage_exadj <- master$nominalwage/master$exrate
 # Create lag and growth variables within each country
 setorder(master, country, year) # Order the data.table by 'country' and 'year'
 master[, nominalwage_lag := shift(nominalwage), by = country]
-master[, wagegrowth := log(nominalwage) - log(nominalwage_lag), by = country]
+master[, wagegrowth := 100*(log(nominalwage) - log(nominalwage_lag)), by = country]
 master[, wagegrowth_lag := shift(wagegrowth), by = country]
 master[, wage_exadj_lag := shift(wage_exadj), by = country]
-master[, wagegrowth2 := log(wage_exadj) - log(wage_exadj_lag), by = country]
+master[, wagegrowth2 := 100*(log(wage_exadj) - log(wage_exadj_lag)), by = country]
 master[, wagegrowth2_lag := shift(wagegrowth2), by = country]
 master[, cpi_lag := shift(cpi), by = country]
 
@@ -155,29 +155,29 @@ master <- master %>%
 #Panel Regressions using feols
 library(fixest)
 
-cpi_fe1 <- feols(cpi ~ voveru + supply + year | country, data = master, cluster = "country")
+cpi_fe1 <- feols(cpi ~ logvoveru + supply | country + year, data = master, cluster = "country")
 cpi_fe1
 
-cpi_fe2 <- feols(cpi ~ voveru + supply + cpi_lag + year | country, data = master, cluster = "country")
+cpi_fe2 <- feols(cpi ~ logvoveru + supply + cpi_lag | country + year, data = master, cluster = "country")
 cpi_fe2
 
-cpi_fe3 <- feols(cpi ~ voveru + voveru_tight_interaction + supply + year | country, data = master, cluster = "country")
+cpi_fe3 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply | country + year, data = master, cluster = "country")
 cpi_fe3
 
-cpi_fe4 <- feols(cpi ~ voveru + voveru_tight_interaction + supply + cpi_lag + year | country, data = master, cluster = "country")
+cpi_fe4 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply + cpi_lag | country + year, data = master, cluster = "country")
 cpi_fe4
 
 
-wage_fe1 <- feols(wagegrowth ~ voveru + supply + year | country, data = master, cluster = "country")
+wage_fe1 <- feols(wagegrowth ~ logvoveru + supply | country + year, data = master, cluster = "country")
 wage_fe1
 
-wage_fe2 <- feols(wagegrowth ~ voveru + supply + wagegrowth_lag + year | country, data = master, cluster = "country")
+wage_fe2 <- feols(wagegrowth ~ logvoveru + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
 wage_fe2
 
-wage_fe3 <- feols(wagegrowth ~ voveru + voveru_tight_interaction + supply + year | country, data = master, cluster = "country")
+wage_fe3 <- feols(wagegrowth ~ logvoveru + voveru_tight_interaction + supply | country + year, data = master, cluster = "country")
 wage_fe3
 
-wage_fe4 <- feols(wagegrowth ~ voveru + voveru_tight_interaction + supply + wagegrowth_lag + year | country, data = master, cluster = "country")
+wage_fe4 <- feols(wagegrowth ~ logvoveru + voveru_tight_interaction + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
 wage_fe4
 
 etable(cpi_fe1, cpi_fe2, cpi_fe3, cpi_fe4)
@@ -213,7 +213,7 @@ generate_graph <- function(country_name) {
     geom_point() +  
     geom_smooth(method = "lm", se = FALSE, color = "blue") +  
     geom_text(size = 3, hjust = -0.2, vjust = 0.5) +  # Add text labels for "year"
-    labs(x = "voveru", y = "CPI", title = paste("voveru vs. CPI for", country_name)) +  
+    labs(x = "voveru", y = "CPI", title = paste(country_name)) +  
     theme_minimal()
 }
 
@@ -223,11 +223,11 @@ map(countries, function(country_name) {
   ggsave(filename = file.path("graph", paste(country_name, ".jpeg", sep = "")), plot = p, width = 8, height = 6, dpi = 300)
 })
 graphs <- map(countries, generate_graph)
-composite_graph <- wrap_plots(graphs, ncol = 4)
-ggsave(filename = "graph/All_graphs.jpeg", plot = composite_graph, width = 12, height = 10, dpi = 300)
+composite_graph <- wrap_plots(graphs, ncol = 5)
+ggsave(filename = "graph/All_graphs.jpeg", plot = composite_graph, width = 12, height = 9, dpi = 300)
 
 
-# Graph of voveru and wage inflation for each countries: generate and export
+# Graph of voveru and wage growth for each countries: generate and export
 countries <- c("Austria", "Czechia", "Finland", "France", "Germany", "Hungary", "Luxembourg", "Norway",
                "Poland", "Portugal", "Sweden", "Switzerland", "Türkiye", "United States")
 
@@ -246,11 +246,11 @@ generate_graph <- function(country_name) {
 map(countries, function(country_name) {
   # Generate the graph
   p <- generate_graph(country_name)
-  ggsave(filename = file.path("graph", paste(country_name, "_wage.jpeg", sep = "")), plot = p, width = 8, height = 6, dpi = 300)
+  ggsave(filename = file.path("graph", paste(country_name, "_wage.jpeg", sep = "")), plot = p, width = 9, height = 6, dpi = 300)
 })
 graphs <- map(countries, generate_graph)
-composite_graph <- wrap_plots(graphs, ncol = 4)
-ggsave(filename = "graph/All_graphs_wage.jpeg", plot = composite_graph, width = 12, height = 10, dpi = 300)
+composite_graph <- wrap_plots(graphs, ncol = 5)
+ggsave(filename = "graph/All_graphs_wage.jpeg", plot = composite_graph, width = 12, height = 9, dpi = 300)
 
 
 ########################################################
