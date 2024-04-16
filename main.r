@@ -89,8 +89,7 @@ master0 <- master
 
 #######1.3 Remove countries with missing values
 master <- master0  #in case I have to run code again from here
-master <- master[year >= 2000]
-master <- master[year < 2023]
+master <- master[year >= 1998] #for completeness of lag variables
 
 ##Chose country to drop by looking at the data. 
 master <- master[master$country != "Australia", ]
@@ -128,6 +127,11 @@ master[, wagegrowth2 := 100*(log(wage_exadj) - log(wage_exadj_lag)), by = countr
 master[, wagegrowth2_lag := shift(wagegrowth2), by = country]
 master[, cpi_lag := shift(cpi), by = country]
 
+master <- master[year >= 2001]
+master <- master[year < 2023]
+
+View(master)
+
 #dummy when voveru is above its mean, by country
 master <- master %>%
   group_by(country) %>%
@@ -136,6 +140,8 @@ master <- master %>%
   ungroup()
 
 master$voveru_tight_interaction <- master$voveru*master$voveru_tight
+master$supply_tight_interaction <- master$supply*master$voveru_tight
+
 
 # Hodrick-Prescott filter within each country
 library(dplyr)
@@ -146,7 +152,6 @@ master <- master %>%
   mutate(voveru_gap = hpfilter(voveru, freq = frequency)$cycle) %>%
   ungroup()
 
-
 #View(master) #to see dataset
 
 ########################################################
@@ -155,41 +160,34 @@ master <- master %>%
 #Panel Regressions using feols
 library(fixest)
 
-cpi_fe1 <- feols(cpi ~ logvoveru + supply | country + year, data = master, cluster = "country")
+cpi_fe1 <- feols(cpi ~ logvoveru + supply + cpi_lag | country + year, data = master, cluster = "country")
 cpi_fe1
 
-cpi_fe2 <- feols(cpi ~ logvoveru + supply + cpi_lag | country + year, data = master, cluster = "country")
+cpi_fe2 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply + cpi_lag| country + year, data = master, cluster = "country")
 cpi_fe2
 
-cpi_fe3 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply | country + year, data = master, cluster = "country")
+cpi_fe3 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply + supply_tight_interaction + cpi_lag | country + year, data = master, cluster = "country")
 cpi_fe3
 
-cpi_fe4 <- feols(cpi ~ logvoveru + voveru_tight_interaction + supply + cpi_lag | country + year, data = master, cluster = "country")
-cpi_fe4
-
-
-wage_fe1 <- feols(wagegrowth ~ logvoveru + supply | country + year, data = master, cluster = "country")
+wage_fe1 <- feols(wagegrowth ~ logvoveru + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
 wage_fe1
 
-wage_fe2 <- feols(wagegrowth ~ logvoveru + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
+wage_fe2 <- feols(wagegrowth ~ logvoveru  + voveru_tight_interaction + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
 wage_fe2
 
-wage_fe3 <- feols(wagegrowth ~ logvoveru + voveru_tight_interaction + supply | country + year, data = master, cluster = "country")
+wage_fe3 <- feols(wagegrowth ~ logvoveru + voveru_tight_interaction + supply + supply_tight_interaction + wagegrowth_lag | country + year, data = master, cluster = "country")
 wage_fe3
 
-wage_fe4 <- feols(wagegrowth ~ logvoveru + voveru_tight_interaction + supply + wagegrowth_lag | country + year, data = master, cluster = "country")
-wage_fe4
-
-etable(cpi_fe1, cpi_fe2, cpi_fe3, cpi_fe4)
-etable(wage_fe1, wage_fe2, wage_fe3, wage_fe4)
+etable(cpi_fe1, cpi_fe2, cpi_fe3)
+etable(wage_fe1, wage_fe2, wage_fe3)
 
 
 #Export result to latex
 library(texreg)
-models_list <- list(cpi_fe1, cpi_fe2, cpi_fe3, cpi_fe4)
+models_list <- list(cpi_fe1, cpi_fe2, cpi_fe3)
 texreg(models_list, file = "forlatex/output_cpi.tex")
 
-models_list <- list(wage_fe1, wage_fe2, wage_fe3, wage_fe4)
+models_list <- list(wage_fe1, wage_fe2, wage_fe3)
 texreg(models_list, file = "forlatex/output_wage.tex")
 
 
@@ -259,3 +257,4 @@ ggsave(filename = "graph/All_graphs_wage.jpeg", plot = composite_graph, width = 
 library(testthat)
 testthat::local_edition(3)
 testthat::test_dir("tests")
+
