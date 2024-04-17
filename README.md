@@ -1,5 +1,8 @@
 # Final Project
 
+## How to run the code
+Run main.r file
+
 ## Folder structure
 1. [folder] data: raw data are in this folder in xlsx form.
 
